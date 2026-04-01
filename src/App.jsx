@@ -5,6 +5,12 @@ import { LocaleProvider } from "./LocaleContext.jsx";
 import DesignMindApp from "./DesignMindApp.jsx";
 import PresentationPage from "./PresentationPage.jsx";
 
+function normalizePath(pathname) {
+  if (!pathname) return "/";
+  const t = pathname.replace(/\/+$/, "");
+  return t === "" ? "/" : t;
+}
+
 function pathMatchesPresentation(pathname) {
   if (!pathname) return false;
   return /\/presentation\/?$/.test(pathname);
@@ -15,19 +21,21 @@ function pathMatchesAppRoute(pathname) {
   return /\/app\/?$/.test(pathname);
 }
 
-/** 生产构建 + 部署在子路径（如 GitHub Pages）时，站点根路径直接展示演示页 */
+/** 生产 + 子路径部署时：当前路径即站点根（与 BASE_URL 同目录）→ 演示页 */
 function pathIsSiteRootForPresentation(pathname) {
-  if (!pathname) return false;
-  const base = import.meta.env.BASE_URL ?? "/";
-  const normalized =
-    base.endsWith("/") && base.length > 1 ? base.slice(0, -1) : base;
-  if (normalized === "/" || normalized === "") {
-    return pathname === "/" || pathname === "";
+  const baseRaw = import.meta.env.BASE_URL ?? "/";
+  if (baseRaw === "./") {
+    return normalizePath(pathname) === "/";
   }
-  return pathname === normalized || pathname === `${normalized}/`;
+  const baseNorm = normalizePath(baseRaw);
+  const pathNorm = normalizePath(pathname);
+  return pathNorm === baseNorm;
 }
 
 export default function App() {
+  const [view, setView] = useState("renderflow");
+  const [renderFlowStep, setRenderFlowStep] = useState(null);
+
   const base = import.meta.env.BASE_URL ?? "/";
   const isSubpathDeploy =
     import.meta.env.PROD && base !== "/" && base !== "./";
@@ -55,9 +63,6 @@ export default function App() {
       <PresentationPage onStartApp={handleStartAppFromPresentation} />
     );
   }
-
-  const [view, setView] = useState("renderflow");
-  const [renderFlowStep, setRenderFlowStep] = useState(null);
 
   return (
     <div className="relative min-h-screen">
