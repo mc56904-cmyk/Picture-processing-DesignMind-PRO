@@ -5,13 +5,55 @@ import { LocaleProvider } from "./LocaleContext.jsx";
 import DesignMindApp from "./DesignMindApp.jsx";
 import PresentationPage from "./PresentationPage.jsx";
 
+function pathMatchesPresentation(pathname) {
+  if (!pathname) return false;
+  return /\/presentation\/?$/.test(pathname);
+}
+
+function pathMatchesAppRoute(pathname) {
+  if (!pathname) return false;
+  return /\/app\/?$/.test(pathname);
+}
+
+/** 生产构建 + 部署在子路径（如 GitHub Pages）时，站点根路径直接展示演示页 */
+function pathIsSiteRootForPresentation(pathname) {
+  if (!pathname) return false;
+  const base = import.meta.env.BASE_URL ?? "/";
+  const normalized =
+    base.endsWith("/") && base.length > 1 ? base.slice(0, -1) : base;
+  if (normalized === "/" || normalized === "") {
+    return pathname === "/" || pathname === "";
+  }
+  return pathname === normalized || pathname === `${normalized}/`;
+}
+
 export default function App() {
+  const base = import.meta.env.BASE_URL ?? "/";
+  const isSubpathDeploy =
+    import.meta.env.PROD && base !== "/" && base !== "./";
+  const baseWithSlash = base.endsWith("/") ? base : `${base}/`;
+
+  const pathname =
+    typeof window !== "undefined" ? window.location.pathname : "";
+
   const isPresentationPage =
     typeof window !== "undefined" &&
-    /\/presentation\/?$/.test(window.location.pathname);
+    !pathMatchesAppRoute(pathname) &&
+    (pathMatchesPresentation(pathname) ||
+      (isSubpathDeploy && pathIsSiteRootForPresentation(pathname)));
+
+  const handleStartAppFromPresentation = () => {
+    if (isSubpathDeploy) {
+      window.location.assign(`${baseWithSlash}app`);
+    } else {
+      window.location.assign("/");
+    }
+  };
 
   if (isPresentationPage) {
-    return <PresentationPage />;
+    return (
+      <PresentationPage onStartApp={handleStartAppFromPresentation} />
+    );
   }
 
   const [view, setView] = useState("renderflow");
